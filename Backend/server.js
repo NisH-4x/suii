@@ -70,6 +70,10 @@ app.use((err, req, res, next) => {
     return res.status(403).json({ message: err.message });
   }
 
+  app.get("/", (_req, res) => {
+  res.send("E-Commerce backend running");
+});
+
   return res.status(500).json({
     message: "Server Error",
     error: err?.message || "Unknown error"
