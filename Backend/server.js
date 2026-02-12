@@ -19,10 +19,10 @@ app.use(express.json());
 /* ================= CORS SETUP ================= */
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests without origin (Postman, mobile apps)
+    // Allow requests without origin (Postman, server-to-server)
     if (!origin) return callback(null, true);
 
-    // Allow localhost (development)
+    // Allow local development
     if (origin === "http://localhost:5173") {
       return callback(null, true);
     }
@@ -40,8 +40,16 @@ const corsOptions = {
   optionsSuccessStatus: 200
 };
 
+// Apply CORS globally
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
+
+// Handle preflight (Express 5 safe way)
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
 /* ============================================== */
 
 
