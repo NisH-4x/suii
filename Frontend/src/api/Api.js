@@ -11,7 +11,7 @@ const getUserId = () => {
 };
 
 const API = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: "https://updatedsocial.onrender.com/api",
   headers: {
     "userid": getUserId()
   }
