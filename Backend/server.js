@@ -12,78 +12,79 @@ const app = express();
 
 connectDB();
 
+
 app.use(express.json());
 
 const normalizeOrigin = (origin) => origin.replace(/\/$/, "");
 
 const allowedOrigins = [
-  'http://localhost:5173',
+  "http://localhost:5173"
 ].map(normalizeOrigin);
 
 app.use(cors({
   origin: function (origin, callback) {
-    // allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
 
     const normalizedOrigin = normalizeOrigin(origin);
 
-    if (allowedOrigins.indexOf(normalizedOrigin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+    if (
+      allowedOrigins.includes(normalizedOrigin) ||
+      normalizedOrigin.endsWith(".vercel.app")
+    ) {
+      return callback(null, true);
     }
+
+    console.log("Blocked by CORS:", origin);
+    return callback(new Error("Not allowed by CORS"));
   },
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   credentials: true
 }));
+
+// Handle preflight requests
+app.options("*", cors());
 
 app.use((req, res, next) => {
   req.userId = req.headers.userid;
   next();
 });
 
-// Middleware to check database connection
+app.get("/", (_req, res) => {
+  res.send("Backend running");
+});
+
+// Database connection check
 app.use((req, res, next) => {
   if (mongoose.connection.readyState !== 1) {
-    return res.status(503).json({ 
+    return res.status(503).json({
       message: "Database connection error",
-      status: mongoose.connection.readyState 
+      status: mongoose.connection.readyState
     });
   }
   next();
 });
 
+// Routes
 app.use("/api/posts", postRoutes);
 app.use("/api/posts", likeRoutes);
 
+// Error Handler
 app.use((err, req, res, next) => {
-  console.error("Unhandled error:", {
-    method: req.method,
-    path: req.originalUrl,
-    origin: req.headers.origin,
-    userId: req.headers.userid,
-    message: err?.message,
-    stack: err?.stack
-  });
+  console.error("Error:", err.message);
 
-  if (err && err.message === "Not allowed by CORS") {
+  if (err.message === "Not allowed by CORS") {
     return res.status(403).json({ message: err.message });
   }
 
-  app.get("/", (_req, res) => {
-  res.send("E-Commerce backend running");
-});
-
-  return res.status(500).json({
+  res.status(500).json({
     message: "Server Error",
-    error: err?.message || "Unknown error"
+    error: err.message || "Unknown error"
   });
 });
+
 
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-
-
