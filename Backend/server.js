@@ -10,27 +10,25 @@ const likeRoutes = require("./routes/likeRoutes");
 
 const app = express();
 
+// Connect Database
 connectDB();
 
-
+// Middleware
 app.use(express.json());
 
-const normalizeOrigin = (origin) => origin.replace(/\/$/, "");
-
-const allowedOrigins = [
-  "http://localhost:5173"
-].map(normalizeOrigin);
-
-app.use(cors({
+/* ================= CORS SETUP ================= */
+const corsOptions = {
   origin: function (origin, callback) {
+    // Allow requests without origin (Postman, mobile apps)
     if (!origin) return callback(null, true);
 
-    const normalizedOrigin = normalizeOrigin(origin);
+    // Allow localhost (development)
+    if (origin === "http://localhost:5173") {
+      return callback(null, true);
+    }
 
-    if (
-      allowedOrigins.includes(normalizedOrigin) ||
-      normalizedOrigin.endsWith(".vercel.app")
-    ) {
+    // Allow all Vercel deployments (production + preview)
+    if (origin.endsWith(".vercel.app")) {
       return callback(null, true);
     }
 
@@ -38,22 +36,27 @@ app.use(cors({
     return callback(new Error("Not allowed by CORS"));
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  credentials: true
-}));
+  credentials: true,
+  optionsSuccessStatus: 200
+};
 
-// Handle preflight requests
-app.options("*", cors());
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
+/* ============================================== */
 
+
+// User ID middleware
 app.use((req, res, next) => {
   req.userId = req.headers.userid;
   next();
 });
 
+// Health check route (for Render)
 app.get("/", (_req, res) => {
   res.send("Backend running");
 });
 
-// Database connection check
+// Check MongoDB connection
 app.use((req, res, next) => {
   if (mongoose.connection.readyState !== 1) {
     return res.status(503).json({
@@ -68,7 +71,7 @@ app.use((req, res, next) => {
 app.use("/api/posts", postRoutes);
 app.use("/api/posts", likeRoutes);
 
-// Error Handler
+// Global Error Handler
 app.use((err, req, res, next) => {
   console.error("Error:", err.message);
 
@@ -82,7 +85,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-
+// Start Server (Render compatible)
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
